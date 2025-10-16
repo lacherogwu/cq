@@ -10,6 +10,7 @@ import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite';
 import * as vite from 'vite';
 import { ACTION_META_KEY, API_PREFIX, PLUGIN_NAME } from '../core/constants';
 import { createH3App } from '../core/internals/server';
+import type { LoggerOptions } from '../core/logger';
 import type { Action, ActionsRegistry } from '../core/types';
 
 export type CqViteOptions = {
@@ -18,6 +19,10 @@ export type CqViteOptions = {
 	 * @default false
 	 */
 	debug?: boolean;
+	/**
+	 * Logger configuration
+	 */
+	logger?: LoggerOptions;
 };
 
 export function cq(options: CqViteOptions = {}): Plugin {
@@ -55,7 +60,9 @@ export function cq(options: CqViteOptions = {}): Plugin {
 		async configureServer(server) {
 			viteServer = server;
 			actionsRegistry = await createActionsRegistry({ viteServer, debug, log });
-			h3App = createH3App(actionsRegistry);
+
+			const loggerOptions = options.logger || { format: 'pretty' };
+			h3App = createH3App(actionsRegistry, loggerOptions);
 
 			viteServer.middlewares.use(async (req, res, next) => {
 				if (!req.url?.startsWith(API_PREFIX)) {
@@ -112,7 +119,7 @@ export function cq(options: CqViteOptions = {}): Plugin {
 				log('Building standalone server...');
 			}
 
-			const serverEntryCode = await generateServerEntryCode(config);
+			const serverEntryCode = await generateServerEntryCode(config, options.logger);
 			const tempEntryPath = path.join(config.root, '.cq-server-entry.mjs');
 			await fs.writeFile(tempEntryPath, serverEntryCode);
 
@@ -264,7 +271,7 @@ function normalizePath(filePath: string): string {
 	return filePath.replace(/\\/g, '/');
 }
 
-async function generateServerEntryCode(config: ResolvedConfig): Promise<string> {
+async function generateServerEntryCode(config: ResolvedConfig, loggerOptions?: LoggerOptions): Promise<string> {
 	const root = config.root;
 	const port = config.server.port || 5173;
 
@@ -278,13 +285,16 @@ async function generateServerEntryCode(config: ResolvedConfig): Promise<string> 
 		actionsImports.push({ baseName, varName, import: `import * as ${varName} from './${relativePath}';` });
 	}
 
+	const productionLoggerOptions = loggerOptions || { format: 'json' };
+	const loggerOptionsStr = JSON.stringify(productionLoggerOptions);
+
 	return `// Generated server entry by @lachero/cq
 import { createH3App, makeServeStaticHandler, serve } from '@lachero/cq/internals/server';
 ${actionsImports.map(i => i.import).join('\n')}
 
 const actionsRegistry = new Map([${actionsImports.map(({ baseName, varName }) => `['${baseName}', new Map(Object.entries(${varName}))]`).join(',')}]);
 
-const app = createH3App(actionsRegistry);
+const app = createH3App(actionsRegistry, ${loggerOptionsStr});
 app.use('/**', makeServeStaticHandler(import.meta.dirname));
 serve(app, { port: ${port} });
 `;

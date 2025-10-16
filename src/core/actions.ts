@@ -16,6 +16,7 @@ function createValidator(validateOrFn: any, maybeFn?: any) {
 			const validate = validateOrFn['~standard'].validate;
 			const result = validate(arg);
 			if (result.issues) {
+				console.dir(result, { depth: Infinity });
 				throw new Error('Invalid input: ' + JSON.stringify(result.issues));
 			}
 

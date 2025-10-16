@@ -3,9 +3,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ACTION_META_KEY, API_PREFIX } from '../constants';
 import { runInContext } from '../context';
+import { createLogger, defaultLogger, type LoggerOptions } from '../logger';
 import { serializer } from '../serializer';
 import type { ActionsRegistry } from '../types';
 export { serve } from 'h3';
+export { createLogger, defaultLogger, type LoggerOptions } from '../logger';
 
 async function getRequestInput(event: H3Event): Promise<any> {
 	if (event.req.method === 'POST') {
@@ -17,7 +19,9 @@ async function getRequestInput(event: H3Event): Promise<any> {
 	}
 }
 
-function makeCqRequestHandler(actionsRegistry: ActionsRegistry) {
+function makeCqRequestHandler(actionsRegistry: ActionsRegistry, loggerOptions?: LoggerOptions) {
+	const logger = loggerOptions ? createLogger(loggerOptions) : defaultLogger;
+
 	return defineHandler(async event => {
 		assertMethod(event, ['GET', 'POST']);
 
@@ -29,6 +33,10 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry) {
 		const actionKey = pathname?.slice(separatorIndex + 1);
 
 		if (!moduleKey || !actionKey) {
+			logger.warn('Request failed: Module or action not found', {
+				url: req.url,
+				pathname,
+			});
 			throw HTTPError.status(404, 'Not Found', {
 				message: 'Module or action not found',
 			});
@@ -36,6 +44,10 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry) {
 
 		const mod = actionsRegistry.get(moduleKey);
 		if (!mod) {
+			logger.warn('Module not found', {
+				module: moduleKey,
+				action: actionKey,
+			});
 			throw HTTPError.status(404, 'Module Not Found', {
 				message: 'The specified module could not be found',
 			});
@@ -43,6 +55,10 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry) {
 
 		const action = mod.get(actionKey);
 		if (!action) {
+			logger.warn('Action not found', {
+				module: moduleKey,
+				action: actionKey,
+			});
 			throw HTTPError.status(404, 'Action Not Found', {
 				message: 'The specified action could not be found',
 			});
@@ -51,9 +67,36 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry) {
 		const expectedMethod = action[ACTION_META_KEY].type === 'query' ? 'GET' : 'POST';
 		assertMethod(event, expectedMethod);
 
+		const startTime = Date.now();
+
 		try {
 			const input = await getRequestInput(event);
+
+			const logData: any = {
+				module: moduleKey,
+				action: actionKey,
+				type: action[ACTION_META_KEY].type,
+			};
+
+			if (input !== undefined && input !== null) {
+				const inputStr = JSON.stringify(input);
+				if (inputStr.length < 500) {
+					logData.input = input;
+				} else {
+					logData.input = '[large payload]';
+				}
+			}
+
+			logger.info('Action started', logData);
+
 			const result = await runInContext(event, async () => await action(input));
+
+			const duration = Date.now() - startTime;
+			logger.info('Action completed successfully', {
+				module: moduleKey,
+				action: actionKey,
+				duration: `${duration}ms`,
+			});
 
 			return new Response(serializer.serialize(result), {
 				headers: {
@@ -61,11 +104,30 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry) {
 				},
 			});
 		} catch (err) {
+			// TODO: check if validation error
+			console.log(err);
+
+			const duration = Date.now() - startTime;
+
 			if (err instanceof HTTPError) {
+				logger.warn('Action failed with HTTP error', {
+					module: moduleKey,
+					action: actionKey,
+					duration: `${duration}ms`,
+					status: err.status,
+					error: err.message,
+				});
 				throw err;
 			}
 
-			console.error(err);
+			logger.error('Action failed with internal error', {
+				module: moduleKey,
+				action: actionKey,
+				duration: `${duration}ms`,
+				error: err instanceof Error ? err.message : String(err),
+				stack: err instanceof Error ? err.stack : undefined,
+			});
+
 			throw HTTPError.status(500, 'Internal Server Error');
 		}
 	});
@@ -91,8 +153,8 @@ export function makeServeStaticHandler(root: string): ReturnType<typeof defineHa
 	);
 }
 
-export function createH3App(actionsRegistry: ActionsRegistry) {
+export function createH3App(actionsRegistry: ActionsRegistry, loggerOptions?: LoggerOptions) {
 	const app = new H3();
-	app.use(`${API_PREFIX}**`, makeCqRequestHandler(actionsRegistry));
+	app.use(`${API_PREFIX}**`, makeCqRequestHandler(actionsRegistry, loggerOptions));
 	return app;
 }
