@@ -6,7 +6,7 @@ import {
 } from "../chunk-GOZNIWMU.js";
 
 // src/core/index.ts
-import { HTTPError } from "h3";
+import { HTTPError, getCookie, getRequestFingerprint, getRequestHost, getRequestIP, getRequestProtocol, getRequestURL, getQuery } from "h3";
 
 // src/core/actions.ts
 function createValidator(validateOrFn, maybeFn) {
@@ -57,7 +57,14 @@ var command = createAction("command");
 export {
   HTTPError,
   command,
+  getCookie,
   getEvent,
+  getQuery,
+  getRequestFingerprint,
+  getRequestHost,
+  getRequestIP,
+  getRequestProtocol,
+  getRequestURL,
   query
 };
 //# sourceMappingURL=index.js.map

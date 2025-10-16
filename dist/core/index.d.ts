@@ -1,5 +1,5 @@
 import { H3Event } from 'h3';
-export { H3Event, HTTPError } from 'h3';
+export { H3Event, HTTPError, getCookie, getQuery, getRequestFingerprint, getRequestHost, getRequestIP, getRequestProtocol, getRequestURL } from 'h3';
 import { StandardSchemaV1 } from '@standard-schema/spec';
 import { A as ActionType, M as MaybePromise, a as Action } from '../types-BFKVvtAe.js';
 
