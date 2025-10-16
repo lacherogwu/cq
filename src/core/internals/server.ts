@@ -65,19 +65,21 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry) {
 				throw err;
 			}
 
+			console.error(err);
 			throw HTTPError.status(500, 'Internal Server Error');
 		}
 	});
 }
 
-export function makeServeStaticHandler(): ReturnType<typeof defineHandler> {
+export function makeServeStaticHandler(root: string): ReturnType<typeof defineHandler> {
+	// TODO: handle cases where user changes the build outDir
+	const getClientFilePath = (filepath: string) => path.join(root, 'client', filepath);
 	return defineHandler(event =>
 		serveStatic(event, {
 			indexNames: ['/index.html'],
-			// @ts-ignore
-			getContents: id => fs.readFile(path.join(import.meta.dirname, 'client', id)).catch(() => fs.readFile(path.join(import.meta.dirname, 'client', 'index.html'))),
+			getContents: async id => fs.readFile(getClientFilePath(id)).catch(() => fs.readFile(getClientFilePath('index.html'))) as any,
 			getMeta: async id => {
-				const stats = await fs.stat(path.join(import.meta.dirname, 'client', id)).catch(() => fs.stat(path.join(import.meta.dirname, 'client', 'index.html')).catch(() => null));
+				const stats = await fs.stat(getClientFilePath(id)).catch(() => fs.stat(getClientFilePath('index.html')).catch(() => null));
 				if (stats?.isFile()) {
 					return {
 						size: stats.size,

@@ -1,6 +1,6 @@
 import {
   createH3App
-} from "../chunk-F7LPLMNS.js";
+} from "../chunk-K3C3SH74.js";
 import "../chunk-345UGIAY.js";
 import "../chunk-TLHMP4XM.js";
 import {
@@ -67,6 +67,7 @@ function cq(options = {}) {
         }
       });
     },
+    // this is used for the transform() hook to work during build
     async buildStart() {
       if (config.command !== "build") return;
       const tempServer = await vite.createServer({
@@ -81,10 +82,6 @@ function cq(options = {}) {
         optimizeDeps: {
           noDiscovery: true,
           include: []
-        },
-        ssr: {
-          external: [],
-          noExternal: true
         },
         configFile: false,
         plugins: []
@@ -111,6 +108,7 @@ function cq(options = {}) {
             emptyOutDir: false,
             minify: true,
             rollupOptions: {
+              external: (id) => !id.startsWith(".") && !path.isAbsolute(id),
               output: {
                 format: "es",
                 entryFileNames: "server.mjs"
@@ -237,7 +235,7 @@ ${actionsImports.map((i) => i.import).join("\n")}
 const actionsRegistry = new Map([${actionsImports.map(({ baseName, varName }) => `['${baseName}', new Map(Object.entries(${varName}))]`).join(",")}]);
 
 const app = createH3App(actionsRegistry);
-app.use('/**', makeServeStaticHandler());
+app.use('/**', makeServeStaticHandler(import.meta.dirname));
 serve(app, { port: ${port} });
 `;
 }

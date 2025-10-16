@@ -63,18 +63,19 @@ function makeCqRequestHandler(actionsRegistry) {
       if (err instanceof HTTPError) {
         throw err;
       }
+      console.error(err);
       throw HTTPError.status(500, "Internal Server Error");
     }
   });
 }
-function makeServeStaticHandler() {
+function makeServeStaticHandler(root) {
+  const getClientFilePath = (filepath) => path.join(root, "client", filepath);
   return defineHandler(
     (event) => serveStatic(event, {
       indexNames: ["/index.html"],
-      // @ts-ignore
-      getContents: (id) => fs.readFile(path.join(import.meta.dirname, "client", id)).catch(() => fs.readFile(path.join(import.meta.dirname, "client", "index.html"))),
+      getContents: async (id) => fs.readFile(getClientFilePath(id)).catch(() => fs.readFile(getClientFilePath("index.html"))),
       getMeta: async (id) => {
-        const stats = await fs.stat(path.join(import.meta.dirname, "client", id)).catch(() => fs.stat(path.join(import.meta.dirname, "client", "index.html")).catch(() => null));
+        const stats = await fs.stat(getClientFilePath(id)).catch(() => fs.stat(getClientFilePath("index.html")).catch(() => null));
         if (stats?.isFile()) {
           return {
             size: stats.size,
@@ -96,4 +97,4 @@ export {
   createH3App,
   serve
 };
-//# sourceMappingURL=chunk-F7LPLMNS.js.map
+//# sourceMappingURL=chunk-K3C3SH74.js.map

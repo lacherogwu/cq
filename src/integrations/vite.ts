@@ -80,6 +80,7 @@ export function cq(options: CqViteOptions = {}): Plugin {
 			});
 		},
 
+		// this is used for the transform() hook to work during build
 		async buildStart() {
 			if (config.command !== 'build') return;
 
@@ -95,10 +96,6 @@ export function cq(options: CqViteOptions = {}): Plugin {
 				optimizeDeps: {
 					noDiscovery: true,
 					include: [],
-				},
-				ssr: {
-					external: [],
-					noExternal: true,
 				},
 				configFile: false,
 				plugins: [],
@@ -130,6 +127,7 @@ export function cq(options: CqViteOptions = {}): Plugin {
 						emptyOutDir: false,
 						minify: true,
 						rollupOptions: {
+							external: id => !id.startsWith('.') && !path.isAbsolute(id),
 							output: {
 								format: 'es',
 								entryFileNames: 'server.mjs',
@@ -287,7 +285,7 @@ ${actionsImports.map(i => i.import).join('\n')}
 const actionsRegistry = new Map([${actionsImports.map(({ baseName, varName }) => `['${baseName}', new Map(Object.entries(${varName}))]`).join(',')}]);
 
 const app = createH3App(actionsRegistry);
-app.use('/**', makeServeStaticHandler());
+app.use('/**', makeServeStaticHandler(import.meta.dirname));
 serve(app, { port: ${port} });
 `;
 }
