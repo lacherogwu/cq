@@ -1,0 +1,1 @@
+{"version":3,"sources":["../src/core/constants.ts"],"sourcesContent":["export const PLUGIN_NAME = 'cq:vite';\nexport const API_PREFIX = '/__cq/';\nexport const ALS_KEY = Symbol.for('@lachero/cq:als');\nexport const ACTION_META_KEY = '__cq_meta';\n"],"mappings":";AAAO,IAAM,cAAc;AACpB,IAAM,aAAa;AACnB,IAAM,UAAU,OAAO,IAAI,iBAAiB;AAC5C,IAAM,kBAAkB;","names":[]}
