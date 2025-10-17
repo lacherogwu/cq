@@ -2,6 +2,7 @@ import { H3Event } from 'h3';
 export { H3Event, HTTPError, getCookie, getQuery, getRequestFingerprint, getRequestHost, getRequestIP, getRequestProtocol, getRequestURL } from 'h3';
 import { StandardSchemaV1 } from '@standard-schema/spec';
 import { A as ActionType, M as MaybePromise, a as Action } from '../types-BFKVvtAe.js';
+export { b as ActionsRegistry } from '../types-BFKVvtAe.js';
 
 type CreateAction<T extends ActionType> = {
     <Output>(fn: () => MaybePromise<Output>): Action<T, Output>;
@@ -12,4 +13,4 @@ declare const command: CreateAction<"command">;
 
 declare function getEvent(): H3Event;
 
-export { command, getEvent, query };
+export { Action, ActionType, command, getEvent, query };

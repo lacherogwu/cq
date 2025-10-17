@@ -9,13 +9,6 @@
 
 **CQ fills the missing gap in modern frontend development** where you want to build a small JavaScript application but also need a lightweight server with full customizability. Instead of reaching for heavy frameworks or complex setups, CQ provides the perfect balance with its Vite plugin integration.
 
-**Perfect for any project size:**
-
-- **Small projects**: Get up and running instantly with minimal configuration
-- **Large projects**: Scale with confidence using full type-safety between frontend and backend
-- **Rapid development**: Hot module reloading for both client and server code
-- **Type-safe by default**: Catch errors at compile-time, not runtime
-
 CQ leverages the CQRS pattern to separate read (queries) and write (commands) operations, making your application more maintainable and scalable while providing seamless type-safety across your entire stack.
 
 ## Features
@@ -34,11 +27,11 @@ CQ leverages the CQRS pattern to separate read (queries) and write (commands) op
 ```bash
 npm i @lachero/cq
 # or
-npm i https://github.com/lacherogwu/cq
-# or
 pnpm add @lachero/cq
 # or
 yarn add @lachero/cq
+# or
+npm i https://github.com/lacherogwu/cq
 ```
 
 ## Quick Start
@@ -52,11 +45,7 @@ import { defineConfig } from 'vite';
 import { cq } from '@lachero/cq/vite';
 
 export default defineConfig({
-	plugins: [
-		cq({
-			debug: true, // Optional: enable debug logging
-		}),
-	],
+	plugins: [cq()],
 });
 ```
 
@@ -218,10 +207,39 @@ export interface CqViteOptions {
 
 ## How It Works
 
-1. **File Detection**: CQ automatically discovers files ending with `.server.ts` or `.server.js`
-2. **Action Registration**: Server actions (queries and commands) are registered and made available via HTTP endpoints
-3. **Client Generation**: The Vite plugin generates type-safe client functions that match your server actions
-4. **Runtime Execution**: Client calls are automatically routed to the corresponding server actions with full type safety
+CQ is designed with a clear separation between **Core** and **Integrations**:
+
+### Core
+
+The core of CQ is simply a way to define type-safe actions with validation. It provides:
+
+- **`query()`** - For read operations (GET requests)
+- **`command()`** - For write operations (POST requests)
+- **Schema validation** - Input validation using Standard Schema
+- **Type safety** - Full TypeScript support for inputs and outputs
+
+### Integrations
+
+#### Vite Integration (Auto-Discovery)
+
+The Vite integration provides automatic action discovery and development tooling:
+
+1. **File Detection**: Automatically discovers files ending with `.server.ts/.js`
+2. **Action Extraction**: Loads these files and extracts all exported queries/commands
+3. **Registry Building**: Builds an `ActionsRegistry` from the discovered actions
+4. **Server Creation**: Uses `createH3App(actionsRegistry)` to create the web server
+5. **Client Generation**: Generates type-safe client functions for the frontend
+6. **Development Features**: HMR, build tooling, etc.
+
+```typescript
+// users.server.ts - Auto-discovered by Vite integration
+export const getUserById = query(z.number(), (userId) => { ... });
+export const createUser = command(userSchema, (userData) => { ... });
+
+// Frontend - Auto-generated client
+import { getUserById, createUser } from './users.server';
+const user = await getUserById(123); // Fully typed!
+```
 
 ## TypeScript Support
 

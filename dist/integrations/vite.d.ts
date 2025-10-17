@@ -1,4 +1,5 @@
 import { Plugin } from 'vite';
+import { L as LoggerOptions } from '../logger-Ce3rAycB.js';
 
 type CqViteOptions = {
     /**
@@ -6,6 +7,10 @@ type CqViteOptions = {
      * @default false
      */
     debug?: boolean;
+    /**
+     * Logger configuration
+     */
+    logger?: LoggerOptions;
 };
 declare function cq(options?: CqViteOptions): Plugin;
 

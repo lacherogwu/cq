@@ -1,7 +1,7 @@
 import {
   createH3App
-} from "../chunk-F7LPLMNS.js";
-import "../chunk-345UGIAY.js";
+} from "../chunk-7QXMIMRP.js";
+import "../chunk-W54CBKQ7.js";
 import "../chunk-TLHMP4XM.js";
 import {
   ACTION_META_KEY,
@@ -47,7 +47,8 @@ function cq(options = {}) {
     async configureServer(server) {
       viteServer = server;
       actionsRegistry = await createActionsRegistry({ viteServer, debug, log });
-      h3App = createH3App(actionsRegistry);
+      const loggerOptions = options.logger || { format: "pretty" };
+      h3App = createH3App(actionsRegistry, loggerOptions);
       viteServer.middlewares.use(async (req, res, next) => {
         if (!req.url?.startsWith(API_PREFIX)) {
           return next();
@@ -67,6 +68,7 @@ function cq(options = {}) {
         }
       });
     },
+    // this is used for the transform() hook to work during build
     async buildStart() {
       if (config.command !== "build") return;
       const tempServer = await vite.createServer({
@@ -82,10 +84,6 @@ function cq(options = {}) {
           noDiscovery: true,
           include: []
         },
-        ssr: {
-          external: [],
-          noExternal: true
-        },
         configFile: false,
         plugins: []
       });
@@ -97,7 +95,7 @@ function cq(options = {}) {
       if (debug) {
         log("Building standalone server...");
       }
-      const serverEntryCode = await generateServerEntryCode(config);
+      const serverEntryCode = await generateServerEntryCode(config, options.logger);
       const tempEntryPath = path.join(config.root, ".cq-server-entry.mjs");
       await fs.writeFile(tempEntryPath, serverEntryCode);
       try {
@@ -111,6 +109,7 @@ function cq(options = {}) {
             emptyOutDir: false,
             minify: true,
             rollupOptions: {
+              external: (id) => !id.startsWith(".") && !path.isAbsolute(id),
               output: {
                 format: "es",
                 entryFileNames: "server.mjs"
@@ -219,7 +218,7 @@ ${exports.map(([name, type, actionKey]) => `export const ${name} = __cq_invoke_a
 function normalizePath(filePath) {
   return filePath.replace(/\\/g, "/");
 }
-async function generateServerEntryCode(config) {
+async function generateServerEntryCode(config, loggerOptions) {
   const root = config.root;
   const port = config.server.port || 5173;
   const files = await getServerFiles(root);
@@ -230,14 +229,16 @@ async function generateServerEntryCode(config) {
     const varName = "__cq_" + baseName.replace(/\W+/g, "_");
     actionsImports.push({ baseName, varName, import: `import * as ${varName} from './${relativePath}';` });
   }
+  const productionLoggerOptions = loggerOptions || { format: "json" };
+  const loggerOptionsStr = JSON.stringify(productionLoggerOptions);
   return `// Generated server entry by @lachero/cq
 import { createH3App, makeServeStaticHandler, serve } from '@lachero/cq/internals/server';
 ${actionsImports.map((i) => i.import).join("\n")}
 
 const actionsRegistry = new Map([${actionsImports.map(({ baseName, varName }) => `['${baseName}', new Map(Object.entries(${varName}))]`).join(",")}]);
 
-const app = createH3App(actionsRegistry);
-app.use('/**', makeServeStaticHandler());
+const app = createH3App(actionsRegistry, ${loggerOptionsStr});
+app.use('/**', makeServeStaticHandler(import.meta.dirname));
 serve(app, { port: ${port} });
 `;
 }

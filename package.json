@@ -1,6 +1,6 @@
 {
 	"name": "@lachero/cq",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "Type-safe CQRS",
 	"types": "./dist/index.d.ts",
 	"exports": {
@@ -50,11 +50,11 @@
 		"typescript": "~5.9.3"
 	},
 	"dependencies": {
-		"vite": "^7.1.9",
 		"@standard-schema/spec": "^1.0.0",
 		"fast-glob": "^3.3.3",
 		"h3": "2.0.0-beta.5",
 		"picocolors": "^1.1.1",
-		"superjson": "^2.2.2"
+		"superjson": "^2.2.2",
+		"vite": "^7.1.9"
 	}
 }
