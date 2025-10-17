@@ -207,10 +207,39 @@ export interface CqViteOptions {
 
 ## How It Works
 
-1. **File Detection**: CQ automatically discovers files ending with `.server.ts` or `.server.js`
-2. **Action Registration**: Server actions (queries and commands) are registered and made available via HTTP endpoints
-3. **Client Generation**: The Vite plugin generates type-safe client functions that match your server actions
-4. **Runtime Execution**: Client calls are automatically routed to the corresponding server actions with full type safety
+CQ is designed with a clear separation between **Core** and **Integrations**:
+
+### Core
+
+The core of CQ is simply a way to define type-safe actions with validation. It provides:
+
+- **`query()`** - For read operations (GET requests)
+- **`command()`** - For write operations (POST requests)
+- **Schema validation** - Input validation using Standard Schema
+- **Type safety** - Full TypeScript support for inputs and outputs
+
+### Integrations
+
+#### Vite Integration (Auto-Discovery)
+
+The Vite integration provides automatic action discovery and development tooling:
+
+1. **File Detection**: Automatically discovers files ending with `.server.ts/.js`
+2. **Action Extraction**: Loads these files and extracts all exported queries/commands
+3. **Registry Building**: Builds an `ActionsRegistry` from the discovered actions
+4. **Server Creation**: Uses `createH3App(actionsRegistry)` to create the web server
+5. **Client Generation**: Generates type-safe client functions for the frontend
+6. **Development Features**: HMR, build tooling, etc.
+
+```typescript
+// users.server.ts - Auto-discovered by Vite integration
+export const getUserById = query(z.number(), (userId) => { ... });
+export const createUser = command(userSchema, (userData) => { ... });
+
+// Frontend - Auto-generated client
+import { getUserById, createUser } from './users.server';
+const user = await getUserById(123); // Fully typed!
+```
 
 ## TypeScript Support
 
