@@ -1,11 +1,13 @@
 import { assertMethod, defineHandler, H3, HTTPError, serveStatic, type H3Event } from 'h3';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { ACTION_META_KEY, API_PREFIX } from '../constants';
 import { runInContext } from '../context';
 import { createLogger, defaultLogger, type LoggerOptions } from '../logger';
 import { serializer } from '../serializer';
 import type { ActionsRegistry } from '../types';
+import { isValidationError } from '../validation';
 export { serve } from 'h3';
 export { createLogger, defaultLogger, type LoggerOptions } from '../logger';
 
@@ -67,7 +69,7 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry, loggerOptions?: 
 		const expectedMethod = action[ACTION_META_KEY].type === 'query' ? 'GET' : 'POST';
 		assertMethod(event, expectedMethod);
 
-		const startTime = Date.now();
+		const startTime = performance.now();
 
 		try {
 			const input = await getRequestInput(event);
@@ -87,15 +89,15 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry, loggerOptions?: 
 				}
 			}
 
-			logger.info('Action started', logData);
+			logger.info('→', logData);
 
 			const result = await runInContext(event, async () => await action(input));
 
-			const duration = Date.now() - startTime;
-			logger.info('Action completed successfully', {
+			const duration = performance.now() - startTime;
+			logger.info('✓', {
 				module: moduleKey,
 				action: actionKey,
-				duration: `${duration}ms`,
+				duration: `${+duration.toFixed(2)}ms`,
 			});
 
 			return new Response(serializer.serialize(result), {
@@ -104,13 +106,10 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry, loggerOptions?: 
 				},
 			});
 		} catch (err) {
-			// TODO: check if validation error
-			console.log(err);
-
-			const duration = Date.now() - startTime;
+			const duration = +(performance.now() - startTime).toFixed(2);
 
 			if (err instanceof HTTPError) {
-				logger.warn('Action failed with HTTP error', {
+				logger.warn('⚠', {
 					module: moduleKey,
 					action: actionKey,
 					duration: `${duration}ms`,
@@ -120,7 +119,21 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry, loggerOptions?: 
 				throw err;
 			}
 
-			logger.error('Action failed with internal error', {
+			if (isValidationError(err)) {
+				logger.warn('⚠', {
+					module: moduleKey,
+					action: actionKey,
+					duration: `${duration}ms`,
+					error: err.message,
+					issues: err.issues,
+				});
+				throw HTTPError.status(400, 'Bad Request', {
+					message: 'Validation Error',
+					body: { issues: err.issues },
+				});
+			}
+
+			logger.error('✗', {
 				module: moduleKey,
 				action: actionKey,
 				duration: `${duration}ms`,

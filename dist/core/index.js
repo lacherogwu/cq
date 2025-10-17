@@ -1,6 +1,7 @@
 import {
+  createValidator,
   getEvent
-} from "../chunk-345UGIAY.js";
+} from "../chunk-W54CBKQ7.js";
 import {
   ACTION_META_KEY
 } from "../chunk-GOZNIWMU.js";
@@ -9,27 +10,6 @@ import {
 import { HTTPError, getCookie, getRequestFingerprint, getRequestHost, getRequestIP, getRequestProtocol, getRequestURL, getQuery } from "h3";
 
 // src/core/actions.ts
-function createValidator(validateOrFn, maybeFn) {
-  if (!maybeFn) {
-    return (arg) => {
-      if (arg !== void 0) {
-        throw new Error("This action does not accept any input");
-      }
-    };
-  }
-  if ("~standard" in validateOrFn) {
-    return (arg) => {
-      const validate = validateOrFn["~standard"].validate;
-      const result = validate(arg);
-      if (result.issues) {
-        console.dir(result, { depth: Infinity });
-        throw new Error("Invalid input: " + JSON.stringify(result.issues));
-      }
-      return result.value;
-    };
-  }
-  throw new Error("Invalid validator passed");
-}
 function createAction(type) {
   return (validateOrFn, maybeFn) => {
     const fn = maybeFn || validateOrFn;

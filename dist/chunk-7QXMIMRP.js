@@ -1,6 +1,7 @@
 import {
+  isValidationError,
   runInContext
-} from "./chunk-345UGIAY.js";
+} from "./chunk-W54CBKQ7.js";
 import {
   serializer
 } from "./chunk-TLHMP4XM.js";
@@ -13,6 +14,7 @@ import {
 import { assertMethod, defineHandler, H3, HTTPError, serveStatic } from "h3";
 import fs from "fs/promises";
 import path from "path";
+import { performance } from "perf_hooks";
 
 // src/core/logger.ts
 import colors from "picocolors";
@@ -52,20 +54,12 @@ function createLogger(options = {}) {
     const timestamp = formatTimestamp();
     const coloredTime = colors.dim(timestamp);
     const coloredLabel = colors.bold(colors.cyan(`[${label}]`));
-    let formattedMsg = msg;
+    let formattedMsg = msg || "";
     let extraInfo = "";
     if (extra) {
       if (extra.module && extra.action) {
         const actionPath = `${colors.blue(extra.module)}/${colors.green(extra.action)}`;
-        if (msg.includes("Action started")) {
-          formattedMsg = `\u2192 ${actionPath}`;
-        } else if (msg.includes("Action completed successfully")) {
-          formattedMsg = `\u2713 ${actionPath}`;
-        } else if (msg.includes("Action failed with internal error")) {
-          formattedMsg = `\u2717 ${actionPath}`;
-        } else if (msg.includes("Action failed with HTTP error")) {
-          formattedMsg = `\u26A0 ${actionPath}`;
-        }
+        formattedMsg += ` ${actionPath}`;
       }
       if (extra.type) {
         extraInfo += ` ${colors.magenta(extra.type)}`;
@@ -170,7 +164,7 @@ function makeCqRequestHandler(actionsRegistry, loggerOptions) {
     }
     const expectedMethod = action[ACTION_META_KEY].type === "query" ? "GET" : "POST";
     assertMethod(event, expectedMethod);
-    const startTime = Date.now();
+    const startTime = performance.now();
     try {
       const input = await getRequestInput(event);
       const logData = {
@@ -186,13 +180,13 @@ function makeCqRequestHandler(actionsRegistry, loggerOptions) {
           logData.input = "[large payload]";
         }
       }
-      logger.info("Action started", logData);
+      logger.info("\u2192", logData);
       const result = await runInContext(event, async () => await action(input));
-      const duration = Date.now() - startTime;
-      logger.info("Action completed successfully", {
+      const duration = performance.now() - startTime;
+      logger.info("\u2713", {
         module: moduleKey,
         action: actionKey,
-        duration: `${duration}ms`
+        duration: `${+duration.toFixed(2)}ms`
       });
       return new Response(serializer.serialize(result), {
         headers: {
@@ -200,10 +194,9 @@ function makeCqRequestHandler(actionsRegistry, loggerOptions) {
         }
       });
     } catch (err) {
-      console.log(err);
-      const duration = Date.now() - startTime;
+      const duration = +(performance.now() - startTime).toFixed(2);
       if (err instanceof HTTPError) {
-        logger.warn("Action failed with HTTP error", {
+        logger.warn("\u26A0", {
           module: moduleKey,
           action: actionKey,
           duration: `${duration}ms`,
@@ -212,7 +205,20 @@ function makeCqRequestHandler(actionsRegistry, loggerOptions) {
         });
         throw err;
       }
-      logger.error("Action failed with internal error", {
+      if (isValidationError(err)) {
+        logger.warn("\u26A0", {
+          module: moduleKey,
+          action: actionKey,
+          duration: `${duration}ms`,
+          error: err.message,
+          issues: err.issues
+        });
+        throw HTTPError.status(400, "Bad Request", {
+          message: "Validation Error",
+          body: { issues: err.issues }
+        });
+      }
+      logger.error("\u2717", {
         module: moduleKey,
         action: actionKey,
         duration: `${duration}ms`,
@@ -254,4 +260,4 @@ export {
   createH3App,
   serve
 };
-//# sourceMappingURL=chunk-RB422IRY.js.map
+//# sourceMappingURL=chunk-7QXMIMRP.js.map

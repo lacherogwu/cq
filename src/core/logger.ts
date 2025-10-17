@@ -29,7 +29,7 @@ export function createLogger(options: LoggerOptions = {}) {
 		});
 	};
 
-	const log = (logLevel: keyof typeof LOG_LEVELS, msg: string, extra?: Record<string, any>) => {
+	const log = (logLevel: keyof typeof LOG_LEVELS, msg?: string, extra?: Record<string, any>) => {
 		if (LOG_LEVELS[logLevel] < currentLogLevel) return;
 
 		if (format === 'json') {
@@ -48,22 +48,13 @@ export function createLogger(options: LoggerOptions = {}) {
 		const coloredTime = colors.dim(timestamp);
 		const coloredLabel = colors.bold(colors.cyan(`[${label}]`));
 
-		let formattedMsg = msg;
+		let formattedMsg = msg || '';
 		let extraInfo = '';
 
 		if (extra) {
 			if (extra.module && extra.action) {
 				const actionPath = `${colors.blue(extra.module)}/${colors.green(extra.action)}`;
-
-				if (msg.includes('Action started')) {
-					formattedMsg = `→ ${actionPath}`;
-				} else if (msg.includes('Action completed successfully')) {
-					formattedMsg = `✓ ${actionPath}`;
-				} else if (msg.includes('Action failed with internal error')) {
-					formattedMsg = `✗ ${actionPath}`;
-				} else if (msg.includes('Action failed with HTTP error')) {
-					formattedMsg = `⚠ ${actionPath}`;
-				}
+				formattedMsg += ` ${actionPath}`;
 			}
 
 			if (extra.type) {

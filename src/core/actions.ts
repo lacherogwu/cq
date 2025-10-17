@@ -1,31 +1,7 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { ACTION_META_KEY } from './constants';
 import type { Action, ActionType, MaybePromise } from './types';
-
-function createValidator(validateOrFn: any, maybeFn?: any) {
-	if (!maybeFn) {
-		return (arg: any) => {
-			if (arg !== undefined) {
-				throw new Error('This action does not accept any input');
-			}
-		};
-	}
-
-	if ('~standard' in validateOrFn) {
-		return (arg: any) => {
-			const validate = validateOrFn['~standard'].validate;
-			const result = validate(arg);
-			if (result.issues) {
-				console.dir(result, { depth: Infinity });
-				throw new Error('Invalid input: ' + JSON.stringify(result.issues));
-			}
-
-			return result.value;
-		};
-	}
-
-	throw new Error('Invalid validator passed');
-}
+import { createValidator } from './validation';
 
 type CreateAction<T extends ActionType> = {
 	<Output>(fn: () => MaybePromise<Output>): Action<T, Output>;

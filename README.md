@@ -9,13 +9,6 @@
 
 **CQ fills the missing gap in modern frontend development** where you want to build a small JavaScript application but also need a lightweight server with full customizability. Instead of reaching for heavy frameworks or complex setups, CQ provides the perfect balance with its Vite plugin integration.
 
-**Perfect for any project size:**
-
-- **Small projects**: Get up and running instantly with minimal configuration
-- **Large projects**: Scale with confidence using full type-safety between frontend and backend
-- **Rapid development**: Hot module reloading for both client and server code
-- **Type-safe by default**: Catch errors at compile-time, not runtime
-
 CQ leverages the CQRS pattern to separate read (queries) and write (commands) operations, making your application more maintainable and scalable while providing seamless type-safety across your entire stack.
 
 ## Features
@@ -34,11 +27,11 @@ CQ leverages the CQRS pattern to separate read (queries) and write (commands) op
 ```bash
 npm i @lachero/cq
 # or
-npm i https://github.com/lacherogwu/cq
-# or
 pnpm add @lachero/cq
 # or
 yarn add @lachero/cq
+# or
+npm i https://github.com/lacherogwu/cq
 ```
 
 ## Quick Start
@@ -52,11 +45,7 @@ import { defineConfig } from 'vite';
 import { cq } from '@lachero/cq/vite';
 
 export default defineConfig({
-	plugins: [
-		cq({
-			debug: true, // Optional: enable debug logging
-		}),
-	],
+	plugins: [cq()],
 });
 ```
 
