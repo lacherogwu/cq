@@ -1,6 +1,6 @@
 {
 	"name": "@lachero/cq",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"description": "Type-safe CQRS",
 	"types": "./dist/index.d.ts",
 	"exports": {
