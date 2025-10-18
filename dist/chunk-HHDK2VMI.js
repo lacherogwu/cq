@@ -38,6 +38,13 @@ function createLogger(options = {}) {
       second: "2-digit"
     });
   };
+  const msgFormatMap = {
+    "Action started": "\u2192",
+    "Action completed successfully": "\u2713",
+    "Action failed with HTTP error": "\u26A0",
+    "Action failed with validation error": "\u26A0",
+    "Action failed with internal error": "\u2717"
+  };
   const log = (logLevel, msg, extra) => {
     if (LOG_LEVELS[logLevel] < currentLogLevel) return;
     if (format === "json") {
@@ -54,12 +61,12 @@ function createLogger(options = {}) {
     const timestamp = formatTimestamp();
     const coloredTime = colors.dim(timestamp);
     const coloredLabel = colors.bold(colors.cyan(`[${label}]`));
-    let formattedMsg = msg || "";
+    let formattedMsg = msg;
     let extraInfo = "";
     if (extra) {
       if (extra.module && extra.action) {
         const actionPath = `${colors.blue(extra.module)}/${colors.green(extra.action)}`;
-        formattedMsg += ` ${actionPath}`;
+        formattedMsg = `${msgFormatMap[msg] || msg} ${actionPath}`;
       }
       if (extra.type) {
         extraInfo += ` ${colors.magenta(extra.type)}`;
@@ -180,10 +187,10 @@ function makeCqRequestHandler(actionsRegistry, loggerOptions) {
           logData.input = "[large payload]";
         }
       }
-      logger.info("\u2192", logData);
+      logger.info("Action started", logData);
       const result = await runInContext(event, async () => await action(input));
       const duration = performance.now() - startTime;
-      logger.info("\u2713", {
+      logger.info("Action completed successfully", {
         module: moduleKey,
         action: actionKey,
         duration: `${+duration.toFixed(2)}ms`
@@ -196,7 +203,7 @@ function makeCqRequestHandler(actionsRegistry, loggerOptions) {
     } catch (err) {
       const duration = +(performance.now() - startTime).toFixed(2);
       if (err instanceof HTTPError) {
-        logger.warn("\u26A0", {
+        logger.warn("Action failed with HTTP error", {
           module: moduleKey,
           action: actionKey,
           duration: `${duration}ms`,
@@ -206,7 +213,7 @@ function makeCqRequestHandler(actionsRegistry, loggerOptions) {
         throw err;
       }
       if (isValidationError(err)) {
-        logger.warn("\u26A0", {
+        logger.warn("Action failed with validation error", {
           module: moduleKey,
           action: actionKey,
           duration: `${duration}ms`,
@@ -218,7 +225,7 @@ function makeCqRequestHandler(actionsRegistry, loggerOptions) {
           body: { issues: err.issues }
         });
       }
-      logger.error("\u2717", {
+      logger.error("Action failed with internal error", {
         module: moduleKey,
         action: actionKey,
         duration: `${duration}ms`,
@@ -260,4 +267,4 @@ export {
   createH3App,
   serve
 };
-//# sourceMappingURL=chunk-7QXMIMRP.js.map
+//# sourceMappingURL=chunk-HHDK2VMI.js.map
