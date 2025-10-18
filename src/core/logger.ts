@@ -29,7 +29,15 @@ export function createLogger(options: LoggerOptions = {}) {
 		});
 	};
 
-	const log = (logLevel: keyof typeof LOG_LEVELS, msg?: string, extra?: Record<string, any>) => {
+	const msgFormatMap: Record<string, string> = {
+		'Action started': '→',
+		'Action completed successfully': '✓',
+		'Action failed with HTTP error': '⚠',
+		'Action failed with validation error': '⚠',
+		'Action failed with internal error': '✗',
+	};
+
+	const log = (logLevel: keyof typeof LOG_LEVELS, msg: string, extra?: Record<string, any>) => {
 		if (LOG_LEVELS[logLevel] < currentLogLevel) return;
 
 		if (format === 'json') {
@@ -48,13 +56,13 @@ export function createLogger(options: LoggerOptions = {}) {
 		const coloredTime = colors.dim(timestamp);
 		const coloredLabel = colors.bold(colors.cyan(`[${label}]`));
 
-		let formattedMsg = msg || '';
+		let formattedMsg = msg;
 		let extraInfo = '';
 
 		if (extra) {
 			if (extra.module && extra.action) {
 				const actionPath = `${colors.blue(extra.module)}/${colors.green(extra.action)}`;
-				formattedMsg += ` ${actionPath}`;
+				formattedMsg = `${msgFormatMap[msg] || msg} ${actionPath}`;
 			}
 
 			if (extra.type) {

@@ -89,12 +89,12 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry, loggerOptions?: 
 				}
 			}
 
-			logger.info('→', logData);
+			logger.info('Action started', logData);
 
 			const result = await runInContext(event, async () => await action(input));
 
 			const duration = performance.now() - startTime;
-			logger.info('✓', {
+			logger.info('Action completed successfully', {
 				module: moduleKey,
 				action: actionKey,
 				duration: `${+duration.toFixed(2)}ms`,
@@ -109,7 +109,7 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry, loggerOptions?: 
 			const duration = +(performance.now() - startTime).toFixed(2);
 
 			if (err instanceof HTTPError) {
-				logger.warn('⚠', {
+				logger.warn('Action failed with HTTP error', {
 					module: moduleKey,
 					action: actionKey,
 					duration: `${duration}ms`,
@@ -120,7 +120,7 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry, loggerOptions?: 
 			}
 
 			if (isValidationError(err)) {
-				logger.warn('⚠', {
+				logger.warn('Action failed with validation error', {
 					module: moduleKey,
 					action: actionKey,
 					duration: `${duration}ms`,
@@ -133,7 +133,7 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry, loggerOptions?: 
 				});
 			}
 
-			logger.error('✗', {
+			logger.error('Action failed with internal error', {
 				module: moduleKey,
 				action: actionKey,
 				duration: `${duration}ms`,
