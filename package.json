@@ -8,6 +8,10 @@
 			"import": "./dist/core/index.js",
 			"types": "./dist/core/index.d.ts"
 		},
+		"./client": {
+			"import": "./dist/core/client.js",
+			"types": "./dist/core/client.d.ts"
+		},
 		"./internals/*": {
 			"import": "./dist/core/internals/*.js",
 			"types": "./dist/core/internals/*.d.ts"
