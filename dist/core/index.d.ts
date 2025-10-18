@@ -1,8 +1,8 @@
 import { H3Event } from 'h3';
 export { H3Event, HTTPError, getCookie, getQuery, getRequestFingerprint, getRequestHost, getRequestIP, getRequestProtocol, getRequestURL } from 'h3';
 import { StandardSchemaV1 } from '@standard-schema/spec';
-import { A as ActionType, M as MaybePromise, a as Action } from '../types-BFKVvtAe.js';
-export { b as ActionsRegistry } from '../types-BFKVvtAe.js';
+import { A as ActionType, M as MaybePromise, b as Action } from '../types-CWnN4t0O.js';
+export { c as ActionsRegistry } from '../types-CWnN4t0O.js';
 
 type CreateAction<T extends ActionType> = {
     <Output>(fn: () => MaybePromise<Output>): Action<T, Output>;
