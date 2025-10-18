@@ -20,7 +20,7 @@ interface ActionNoInput<T extends ActionType, Output> extends ActionMeta<T> {
 type Action<T extends ActionType = 'query' | 'command', Output = any, Schema = undefined> = Schema extends StandardSchemaV1 ? ActionWithInput<T, Output, Schema> : ActionNoInput<T, Output>;
 type ActionsRegistry = Map<string, Map<string, Action<ActionType, any, any>>>;
 type MaybePromise<T> = T | Promise<T>;
-type ClientType<T> = T extends Record<string, any> ? {
+type ActionsClient<T> = T extends Record<string, any> ? {
     [K in keyof T]: T[K] extends {
         readonly [ACTION_META_KEY]: {
             type: infer MT;
@@ -28,7 +28,7 @@ type ClientType<T> = T extends Record<string, any> ? {
         };
     } ? MT extends 'query' | 'command' ? {
         [A in MT]: MI extends StandardSchemaV1 ? (input: StandardSchemaV1.InferInput<MI>) => ReturnType<T[K]> : () => ReturnType<T[K]>;
-    } : never : ClientType<T[K]>;
+    } : never : ActionsClient<T[K]>;
 } : never;
 
-export type { ActionType as A, ClientType as C, MaybePromise as M, Action as a, ActionsRegistry as b };
+export type { ActionType as A, MaybePromise as M, ActionsClient as a, Action as b, ActionsRegistry as c };

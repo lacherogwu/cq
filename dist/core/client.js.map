@@ -1,1 +1,1 @@
-{"version":3,"sources":["../../src/core/client.ts"],"sourcesContent":["import type { ClientType } from './types';\n\ntype Opts = {\n\tbaseURL?: string;\n};\n\nexport function createClient<T>(opts?: Opts): ClientType<T> {\n\treturn '' as any;\n}\n"],"mappings":";AAMO,SAAS,aAAgB,MAA4B;AAC3D,SAAO;AACR;","names":[]}
+{"version":3,"sources":[],"sourcesContent":[],"mappings":"","names":[]}

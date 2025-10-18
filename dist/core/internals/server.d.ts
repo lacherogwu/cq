@@ -2,7 +2,7 @@ import { defineHandler, H3 } from 'h3';
 export { serve } from 'h3';
 import { L as LoggerOptions } from '../../logger-Ce3rAycB.js';
 export { c as createLogger, d as defaultLogger } from '../../logger-Ce3rAycB.js';
-import { b as ActionsRegistry } from '../../types-DktKsBVN.js';
+import { c as ActionsRegistry } from '../../types-CWnN4t0O.js';
 import '@standard-schema/spec';
 
 declare function makeServeStaticHandler(root: string): ReturnType<typeof defineHandler>;
