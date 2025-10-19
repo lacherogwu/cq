@@ -36,102 +36,89 @@ npm i https://github.com/lacherogwu/cq
 
 ## Quick Start
 
-Choose your integration:
+> **💡 Check out the [`examples/`](./examples) folder for working examples!**
 
-<details>
-<summary><strong>🔥 Vite Integration</strong> (File-based auto-discovery)</summary>
+CQ offers two main approaches:
 
-### 1. Configure Vite Plugin
+### 🔥 Vite Integration (File-based auto-discovery)
+
+Perfect for full-stack apps. Auto-discovers `.server.ts` files and generates type-safe clients:
 
 ```typescript
+// vite.config.ts
 import { defineConfig } from 'vite';
 import { cq } from '@lachero/cq/vite';
 
 export default defineConfig({
 	plugins: [cq()],
 });
-```
 
-### 2. Create Server Actions
-
-Create files ending with `.server.ts`:
-
-```typescript
-// src/users.server.ts
-import { command, query } from '@lachero/cq';
-import { z } from 'zod';
-
-export const getUser = query(z.object({ id: z.string() }), async ({ id }) => ({ id, name: 'John', email: 'john@example.com' }));
-
-export const createUser = command(z.object({ name: z.string(), email: z.string().email() }), async input => ({ id: crypto.randomUUID(), ...input }));
-```
-
-### 3. Use in Frontend
-
-```typescript
-import { getUser, createUser } from './users.server';
-
-// Fully typed calls
-const user = await getUser({ id: '123' });
-const newUser = await createUser({ name: 'Jane', email: 'jane@example.com' });
-```
-
-</details>
-
-<details>
-<summary><strong>⚡ Fastify Integration</strong> (Coming soon)</summary>
-
-### 1. Organize Your Actions
-
-```typescript
-// actions/users.ts
+// counter.server.ts
 import { query, command } from '@lachero/cq';
 import { z } from 'zod';
 
-export const getUser = query(z.object({ id: z.string() }), async ({ id }) => ({ id, name: 'John', email: 'john@example.com' }));
+let count = 0;
 
-export const createUser = command(z.object({ name: z.string(), email: z.string().email() }), async input => ({ id: crypto.randomUUID(), ...input }));
-```
+export const getCounter = query(async () => ({ count }));
 
-### 2. Create Server
-
-```typescript
-// server.ts
-import { createH3App } from '@lachero/cq/internals/server';
-import * as users from './actions/users';
-
-export const actions = { users };
-export type ActionsType = typeof actions;
-
-// Convert to registry and create server
-const actionsRegistry = new Map([['users', new Map(Object.entries(users))]]);
-
-const h3App = createH3App(actionsRegistry);
-// Mount h3App in your Fastify server
-```
-
-### 3. Create Type-Safe Client
-
-```typescript
-// client.ts
-import { createActionsClient } from '@lachero/cq/client';
-import type { ActionsType } from './server';
-
-const api = createActionsClient<ActionsType>({
-	url: 'http://localhost:3000',
+export const setCounter = command(z.object({ value: z.number() }), async ({ value }) => {
+	count = value;
+	return { count };
 });
 
-// Fully typed calls
-const user = await api.users.getUser.query({ id: '123' });
-const newUser = await api.users.createUser.command({ name: 'Jane', email: 'jane@example.com' });
+// counter.ts - Frontend usage
+import { getCounter, setCounter } from './counter.server';
+
+const { count } = await getCounter(); // Fully typed!
+await setCounter({ value: 42 });
 ```
 
-</details>
+### ⚡ Fastify Integration (Separate Server)
+
+For existing backends or when you need more control:
+
+```typescript
+// actions.ts
+import { query, command } from '@lachero/cq';
+import { z } from 'zod';
+
+export const actions = {
+	healthcheck: query(() => 'OK'),
+	users: {
+		createUser: command(z.object({ name: z.string() }), async ({ name }) => ({ id: crypto.randomUUID(), name })),
+		getUserById: query(z.object({ id: z.string() }), async ({ id }) => ({ id, name: 'John Doe' })),
+	},
+};
+
+export type Actions = typeof actions;
+
+// server.ts
+import Fastify from 'fastify';
+import { cqFastify } from '@lachero/cq/fastify';
+import { actions } from './actions';
+
+const fastify = Fastify({ logger: true });
+
+// Register CQ with your actions
+fastify.register(cqFastify, { actions });
+
+fastify.listen({ port: 3000 });
+
+// client.ts
+import { createActionsClient } from '@lachero/cq/client';
+import type { Actions } from './actions';
+
+const api = createActionsClient<Actions>({ url: 'http://localhost:3000' });
+
+// Fully typed calls
+const health = await api.healthcheck.query();
+const user = await api.users.getUserById.query({ id: '123' });
+const newUser = await api.users.createUser.command({ name: 'Jane' });
+```
 
 ## Advanced Usage
 
-<details>
-<summary><strong>Error Handling</strong></summary>
+### Error Handling
 
 ```typescript
 import { query, HTTPError } from '@lachero/cq';
@@ -143,10 +130,7 @@ export const getUser = query(z.object({ id: z.string() }), async ({ id }) => {
 });
 ```
 
-</details>
-
-<details>
-<summary><strong>Request Context & Authentication</strong></summary>
+### Request Context & Authentication
 
 ```typescript
 import { query, getEvent, getCookie } from '@lachero/cq';
@@ -160,10 +144,7 @@ export const getCurrentUser = query(async () => {
 });
 ```
 
-</details>
-
-<details>
-<summary><strong>Database Integration</strong></summary>
+### Database Integration
 
 ```typescript
 import { query, command } from '@lachero/cq';
@@ -173,8 +154,6 @@ export const getUsers = query(async () => prisma.user.findMany());
 
 export const createPost = command(z.object({ title: z.string(), content: z.string(), authorId: z.string() }), async input => prisma.post.create({ data: input, include: { author: true } }));
 ```
-
-</details>
 
 ## Configuration
 
@@ -252,9 +231,6 @@ CQ is built with TypeScript from the ground up. All server actions are fully typ
 
 ## Roadmap
 
-- **Fastify integration** - Native integration with Fastify server
-- **Hono integration** - Seamless integration with Hono for edge computing
-- **Dynamic client generation** - Standalone client generation for projects not using Vite
 - **OpenAPI export** - Generate OpenAPI specs from your CQ actions
 
 We're open to suggestions! [Open an issue](https://github.com/lacherogwu/qc/issues) to share your ideas.

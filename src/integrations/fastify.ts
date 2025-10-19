@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 import type { ReadableStream } from 'node:stream/web';
 import { ACTION_META_KEY, API_PREFIX } from '../core/constants';
 import { convertActionsObjectToRegistry, createH3App } from '../core/internals/server';
-import type { Action, ActionsMap, ActionType } from '../core/types';
+import type { ActionsMap } from '../core/types';
 
 type FastifyPluginOptions = {
 	actions: ActionsMap;
