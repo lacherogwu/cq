@@ -3,13 +3,13 @@ import { ACTION_META_KEY } from './constants';
 
 export type ActionType = 'query' | 'command';
 
-export type ActionDefinition<T extends ActionType = 'query' | 'command', I extends StandardSchemaV1 | null = null> = {
+export type ActionDefinition<T extends ActionType = ActionType, I extends StandardSchemaV1 | null = null> = {
 	readonly type: T;
 	readonly inputSchema: I;
 	readonly handler: (input?: any) => MaybePromise<any>;
 };
 
-export type ActionMeta<T extends ActionType = 'query' | 'command', I extends StandardSchemaV1 | null = null> = {
+export type ActionMeta<T extends ActionType = ActionType, I extends StandardSchemaV1 | null = null> = {
 	readonly [ACTION_META_KEY]: ActionDefinition<T, I>;
 };
 
@@ -21,9 +21,13 @@ export interface ActionNoInput<T extends ActionType, Output> extends ActionMeta<
 	(): Promise<Output>;
 }
 
-export type Action<T extends ActionType = 'query' | 'command', Output = any, Schema = undefined> = Schema extends StandardSchemaV1 ? ActionWithInput<T, Output, Schema> : ActionNoInput<T, Output>;
+export type Action<T extends ActionType = ActionType, Output = any, Schema = undefined> = Schema extends StandardSchemaV1 ? ActionWithInput<T, Output, Schema> : ActionNoInput<T, Output>;
 
 export type ActionsRegistry = Map<string, Map<string, Action<ActionType, any, any>>>;
+
+export type ActionsMap = {
+	[key: string]: Action<ActionType, any, any> | ActionsMap;
+};
 
 export type MaybePromise<T> = T | Promise<T>;
 
