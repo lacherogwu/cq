@@ -36,159 +36,123 @@ npm i https://github.com/lacherogwu/cq
 
 ## Quick Start
 
-### 1. Configure Vite
+> **💡 Check out the [`examples/`](./examples) folder for working examples!**
 
-Add the CQ plugin to your `vite.config.ts`:
+CQ offers two main approaches:
+
+### 🔥 Vite Integration (File-based auto-discovery)
+
+Perfect for full-stack apps. Auto-discovers `.server.ts` files and generates type-safe clients:
 
 ```typescript
+// vite.config.ts
 import { defineConfig } from 'vite';
 import { cq } from '@lachero/cq/vite';
 
 export default defineConfig({
 	plugins: [cq()],
 });
-```
 
-### 2. Create Server Actions
+// counter.server.ts
+import { query, command } from '@lachero/cq';
+import { z } from 'zod';
 
-Create a file ending with `.server.ts` (e.g., `src/actions.server.ts`):
+let count = 0;
 
-```typescript
-import { command, query } from '@lachero/cq';
-import { z } from 'zod'; // or any Standard Schema compatible library
+export const getCounter = query(async () => ({ count }));
 
-// Define a query (read operation)
-export const getUser = query(
-	z.object({ id: z.string() }), // Input schema
-	async input => {
-		// Your server logic here
-		return {
-			id: input.id,
-			name: 'John Doe',
-			email: 'john@example.com',
-		};
-	},
-);
-
-// Define a command (write operation)
-export const createUser = command(
-	z.object({
-		name: z.string(),
-		email: z.string().email(),
-	}),
-	async input => {
-		// Your server logic here
-		const user = {
-			id: Math.random().toString(36),
-			...input,
-			createdAt: new Date(),
-		};
-
-		// Save to database, send emails, etc.
-		console.log('Creating user:', user);
-
-		return user;
-	},
-);
-
-// Query without input
-export const getStats = query(async () => {
-	return {
-		totalUsers: 42,
-		activeUsers: 28,
-	};
-});
-```
-
-### 3. Use in Frontend
-
-Import and use your server actions in your frontend code:
-
-```typescript
-import { getUser, createUser, getStats } from './actions.server';
-
-// Query with input
-const user = await getUser({ id: '123' });
-console.log(user.name); // Fully typed!
-
-// Command with input
-const newUser = await createUser({
-	name: 'Jane Doe',
-	email: 'jane@example.com',
+export const setCounter = command(z.object({ value: z.number() }), async ({ value }) => {
+	count = value;
+	return { count };
 });
 
-// Query without input
-const stats = await getStats();
-console.log(stats.totalUsers); // Type-safe!
+// counter.ts - Frontend usage
+import { getCounter, setCounter } from './counter.server';
+
+const { count } = await getCounter(); // Fully typed!
+await setCounter({ value: 42 });
+```
+
+### ⚡ Fastify Integration (Separate Server)
+
+For existing backends or when you need more control:
+
+```typescript
+// actions.ts
+import { query, command } from '@lachero/cq';
+import { z } from 'zod';
+
+export const actions = {
+	healthcheck: query(() => 'OK'),
+	users: {
+		createUser: command(z.object({ name: z.string() }), async ({ name }) => ({ id: crypto.randomUUID(), name })),
+		getUserById: query(z.object({ id: z.string() }), async ({ id }) => ({ id, name: 'John Doe' })),
+	},
+};
+
+export type Actions = typeof actions;
+
+// server.ts
+import Fastify from 'fastify';
+import { cqFastify } from '@lachero/cq/fastify';
+import { actions } from './actions';
+
+const fastify = Fastify({ logger: true });
+
+// Register CQ with your actions
+fastify.register(cqFastify, { actions });
+
+fastify.listen({ port: 3000 });
+
+// client.ts
+import { createActionsClient } from '@lachero/cq/client';
+import type { Actions } from './actions';
+
+const api = createActionsClient<Actions>({ url: 'http://localhost:3000' });
+
+// Fully typed calls
+const health = await api.healthcheck.query();
+const user = await api.users.getUserById.query({ id: '123' });
+const newUser = await api.users.createUser.command({ name: 'Jane' });
 ```
 
 ## Advanced Usage
 
 ### Error Handling
 
-CQ provides built-in error handling with `HTTPError`:
-
 ```typescript
 import { query, HTTPError } from '@lachero/cq';
 
-export const getUser = query(z.object({ id: z.string() }), async input => {
-	const user = await database.user.findById(input.id);
-
-	if (!user) {
-		throw new HTTPError('User not found', { status: 404 });
-	}
-
+export const getUser = query(z.object({ id: z.string() }), async ({ id }) => {
+	const user = await database.user.findById(id);
+	if (!user) throw new HTTPError('User not found', { status: 404 });
 	return user;
 });
 ```
 
-### Accessing Request Context
-
-Access the underlying H3 event for request context:
+### Request Context & Authentication
 
 ```typescript
 import { query, getEvent, getCookie } from '@lachero/cq';
 
 export const getCurrentUser = query(async () => {
 	const event = getEvent();
-	const token = getCookie(event, 'auth-token') || event.req.headers.get('authorization');
+	const token = getCookie(event, 'auth-token') || event.headers.get('authorization');
 
-	if (!token) {
-		throw new HTTPError('Unauthorized', { status: 401 });
-	}
-
-	// Verify token and return user
+	if (!token) throw new HTTPError('Unauthorized', { status: 401 });
 	return await verifyAndGetUser(token);
 });
 ```
 
 ### Database Integration
 
-CQ works great with any database or ORM:
-
 ```typescript
 import { query, command } from '@lachero/cq';
 import { prisma } from './lib/prisma';
 
-export const getUsers = query(async () => {
-	return await prisma.user.findMany();
-});
+export const getUsers = query(async () => prisma.user.findMany());
 
-export const createPost = command(
-	z.object({
-		title: z.string(),
-		content: z.string(),
-		authorId: z.string(),
-	}),
-	async input => {
-		return await prisma.post.create({
-			data: input,
-			include: {
-				author: true,
-			},
-		});
-	},
-);
+export const createPost = command(z.object({ title: z.string(), content: z.string(), authorId: z.string() }), async input => prisma.post.create({ data: input, include: { author: true } }));
 ```
 
 ## Configuration
@@ -196,40 +160,60 @@ export const createPost = command(
 ### Vite Plugin Options
 
 ```typescript
-export interface CqViteOptions {
-	/**
-	 * Enable debug logging
-	 * @default false
-	 */
-	debug?: boolean;
-}
+export default defineConfig({
+	plugins: [
+		cq({
+			debug: true, // Enable debug logging
+			logger: {
+				level: 'info', // trace | debug | info | warn | error | fatal
+				label: 'MY-API', // Custom label (default: 'CQ')
+				format: 'pretty', // 'pretty' (dev) | 'json' (prod)
+			},
+		}),
+	],
+});
+```
+
+### Client Options
+
+```typescript
+const api = createActionsClient<ActionsType>({
+	url: 'http://localhost:3000',
+	headers: { Authorization: 'Bearer token' }, // or async function
+	onRequest: ({ type, action, input }) => console.log('→', action),
+	onResponse: ({ type, action, result }) => console.log('✓', action),
+	onError: ({ type, action, result }) => console.error('✗', action, result),
+});
 ```
 
 ## How It Works
 
-CQ is designed with a clear separation between **Core** and **Integrations**:
+CQ separates **Core** (action definition + HTTP routing) from **Integrations** (action organization):
 
 ### Core
 
-The core of CQ is simply a way to define type-safe actions with validation. It provides:
-
-- **`query()`** - For read operations (GET requests)
-- **`command()`** - For write operations (POST requests)
-- **Schema validation** - Input validation using Standard Schema
-- **Type safety** - Full TypeScript support for inputs and outputs
+- `query()` / `command()` - Define type-safe actions with validation
+- `createH3App()` - HTTP server that routes requests to actions
+- `createActionsClient()` - Type-safe client for consuming actions
 
 ### Integrations
 
-#### Vite Integration (Auto-Discovery)
+- **Vite**: Auto-discovers `.server.ts` files, generates clients
+- **Others**: Manual action organization, use `createActionsClient()`
 
-The Vite integration provides automatic action discovery and development tooling:
+```typescript
+// 1. Define actions
+export const getUser = query(schema, async (input) => { ... });
 
-1. **File Detection**: Automatically discovers files ending with `.server.ts/.js`
-2. **Action Extraction**: Loads these files and extracts all exported queries/commands
-3. **Registry Building**: Builds an `ActionsRegistry` from the discovered actions
-4. **Server Creation**: Uses `createH3App(actionsRegistry)` to create the web server
-5. **Client Generation**: Generates type-safe client functions for the frontend
-6. **Development Features**: HMR, build tooling, etc.
+// 2a. Vite: Auto-discovered and routed
+import { getUser } from './users.server';
+
+// 2b. Other: Manual registry + client
+const api = createActionsClient<ActionsType>({ url: '...' });
+await api.users.getUser.query({ id: '123' });
+```
+
+**Benefits**: Framework agnostic core, flexible integrations, end-to-end type safety, consistent H3-powered HTTP layer.
 
 ```typescript
 // users.server.ts - Auto-discovered by Vite integration
@@ -247,9 +231,6 @@ CQ is built with TypeScript from the ground up. All server actions are fully typ
 
 ## Roadmap
 
-- **Fastify integration** - Native integration with Fastify server
-- **Hono integration** - Seamless integration with Hono for edge computing
-- **Dynamic client generation** - Standalone client generation for projects not using Vite
 - **OpenAPI export** - Generate OpenAPI specs from your CQ actions
 
 We're open to suggestions! [Open an issue](https://github.com/lacherogwu/qc/issues) to share your ideas.

@@ -138,9 +138,9 @@ function makeCqRequestHandler(actionsRegistry, loggerOptions) {
     const url = req.url?.split(API_PREFIX)[1];
     const pathname = url?.split("?")[0];
     const separatorIndex = pathname?.lastIndexOf("/") ?? -1;
-    const moduleKey = pathname?.slice(0, separatorIndex);
+    const moduleKey = separatorIndex < 0 ? "" : pathname?.slice(0, separatorIndex);
     const actionKey = pathname?.slice(separatorIndex + 1);
-    if (!moduleKey || !actionKey) {
+    if (moduleKey === void 0 || actionKey === void 0) {
       logger.warn("Request failed: Module or action not found", {
         url: req.url,
         pathname
@@ -259,12 +259,29 @@ function createH3App(actionsRegistry, loggerOptions) {
   app.use(`${API_PREFIX}**`, makeCqRequestHandler(actionsRegistry, loggerOptions));
   return app;
 }
+function convertActionsObjectToRegistry(actions) {
+  const registry = /* @__PURE__ */ new Map();
+  const inner = (obj, basePath = "") => {
+    for (const [name, value] of Object.entries(obj)) {
+      if (typeof value === "function" && ACTION_META_KEY in value) {
+        const actionsMap = registry.get(basePath) || /* @__PURE__ */ new Map();
+        actionsMap.set(name, value);
+        registry.set(basePath, actionsMap);
+      } else {
+        inner(value, `${basePath}${basePath === "" ? "" : "/"}${name}`);
+      }
+    }
+  };
+  inner(actions);
+  return registry;
+}
 
 export {
   createLogger,
   defaultLogger,
   makeServeStaticHandler,
   createH3App,
+  convertActionsObjectToRegistry,
   serve
 };
-//# sourceMappingURL=chunk-HHDK2VMI.js.map
+//# sourceMappingURL=chunk-AGSBHUSU.js.map

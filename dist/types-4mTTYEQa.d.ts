@@ -3,12 +3,12 @@ import { StandardSchemaV1 } from '@standard-schema/spec';
 declare const ACTION_META_KEY = "__cq_meta";
 
 type ActionType = 'query' | 'command';
-type ActionDefinition<T extends ActionType = 'query' | 'command', I extends StandardSchemaV1 | null = null> = {
+type ActionDefinition<T extends ActionType = ActionType, I extends StandardSchemaV1 | null = null> = {
     readonly type: T;
     readonly inputSchema: I;
     readonly handler: (input?: any) => MaybePromise<any>;
 };
-type ActionMeta<T extends ActionType = 'query' | 'command', I extends StandardSchemaV1 | null = null> = {
+type ActionMeta<T extends ActionType = ActionType, I extends StandardSchemaV1 | null = null> = {
     readonly [ACTION_META_KEY]: ActionDefinition<T, I>;
 };
 interface ActionWithInput<T extends ActionType, Output, Schema extends StandardSchemaV1> extends ActionMeta<T, Schema> {
@@ -17,8 +17,11 @@ interface ActionWithInput<T extends ActionType, Output, Schema extends StandardS
 interface ActionNoInput<T extends ActionType, Output> extends ActionMeta<T> {
     (): Promise<Output>;
 }
-type Action<T extends ActionType = 'query' | 'command', Output = any, Schema = undefined> = Schema extends StandardSchemaV1 ? ActionWithInput<T, Output, Schema> : ActionNoInput<T, Output>;
+type Action<T extends ActionType = ActionType, Output = any, Schema = undefined> = Schema extends StandardSchemaV1 ? ActionWithInput<T, Output, Schema> : ActionNoInput<T, Output>;
 type ActionsRegistry = Map<string, Map<string, Action<ActionType, any, any>>>;
+type ActionsMap = {
+    [key: string]: Action<ActionType, any, any> | ActionsMap;
+};
 type MaybePromise<T> = T | Promise<T>;
 type ActionsClient<T> = T extends Record<string, any> ? {
     [K in keyof T]: T[K] extends {
@@ -31,4 +34,4 @@ type ActionsClient<T> = T extends Record<string, any> ? {
     } : never : ActionsClient<T[K]>;
 } : never;
 
-export type { ActionType as A, MaybePromise as M, ActionsClient as a, Action as b, ActionsRegistry as c };
+export type { ActionType as A, MaybePromise as M, ActionsClient as a, Action as b, ActionsRegistry as c, ActionsMap as d };

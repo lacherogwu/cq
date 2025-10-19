@@ -6,7 +6,7 @@ import { ACTION_META_KEY, API_PREFIX } from '../constants';
 import { runInContext } from '../context';
 import { createLogger, defaultLogger, type LoggerOptions } from '../logger';
 import { serializer } from '../serializer';
-import type { ActionsRegistry } from '../types';
+import type { Action, ActionsMap, ActionsRegistry, ActionType } from '../types';
 import { isValidationError } from '../validation';
 export { serve } from 'h3';
 export { createLogger, defaultLogger, type LoggerOptions } from '../logger';
@@ -31,10 +31,10 @@ function makeCqRequestHandler(actionsRegistry: ActionsRegistry, loggerOptions?: 
 		const url = req.url?.split(API_PREFIX)[1];
 		const pathname = url?.split('?')[0];
 		const separatorIndex = pathname?.lastIndexOf('/') ?? -1;
-		const moduleKey = pathname?.slice(0, separatorIndex);
+		const moduleKey = separatorIndex < 0 ? '' : pathname?.slice(0, separatorIndex);
 		const actionKey = pathname?.slice(separatorIndex + 1);
 
-		if (!moduleKey || !actionKey) {
+		if (moduleKey === undefined || actionKey === undefined) {
 			logger.warn('Request failed: Module or action not found', {
 				url: req.url,
 				pathname,
@@ -170,4 +170,24 @@ export function createH3App(actionsRegistry: ActionsRegistry, loggerOptions?: Lo
 	const app = new H3();
 	app.use(`${API_PREFIX}**`, makeCqRequestHandler(actionsRegistry, loggerOptions));
 	return app;
+}
+
+export function convertActionsObjectToRegistry(actions: ActionsMap): ActionsRegistry {
+	const registry: ActionsRegistry = new Map();
+
+	const inner = (obj: ActionsMap, basePath = '') => {
+		for (const [name, value] of Object.entries(obj)) {
+			if (typeof value === 'function' && ACTION_META_KEY in value) {
+				const actionsMap = registry.get(basePath) || new Map();
+				actionsMap.set(name, value);
+				registry.set(basePath, actionsMap);
+			} else {
+				inner(value, `${basePath}${basePath === '' ? '' : '/'}${name}`);
+			}
+		}
+	};
+
+	inner(actions);
+
+	return registry;
 }
